@@ -129,7 +129,7 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("getid", get_id))
 
     print("✅ Dexmate AI Bot is Live (Free Mode)")
-    app.run_polling()
+   #app.run_polling()
     # main.py
 from flask import Flask, request
 import telegram
