@@ -20,16 +20,16 @@ ADS = [
 
 # ========== FLASK SERVER ==========
 app_flask = Flask(__name__)
-
 @app_flask.route('/')
 def index():
     return "Dexmate AI is live (Free Mode)"
 
 application = ApplicationBuilder().token(BOT_TOKEN).build()
+
 @app_flask.route(f'/{BOT_TOKEN}', methods=['POST'])
 def webhook():
-    update = Update.de_json(request.get_json(force=True), app.bot)
-    app.create_task(app.process_update(update))
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.create_task(application.process_update(update))
     return "ok"
 
 def run_flask():
