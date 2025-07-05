@@ -20,11 +20,11 @@ ADS = [
 
 # ========== FLASK SERVER ==========
 app_flask = Flask(__name__)
+application = ApplicationBuilder().token(BOT_TOKEN).build()
+
 @app_flask.route('/')
 def index():
     return "Dexmate AI is live (Free Mode)"
-
-application = ApplicationBuilder().token(BOT_TOKEN).build()
 
 @app_flask.route(f'/{BOT_TOKEN}', methods=['POST'])
 def webhook():
@@ -130,10 +130,9 @@ async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     threading.Thread(target=run_flask).start()
 
-    application = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    app.add_handler(CommandHandler("getid", get_id))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    application.add_handler(CommandHandler("getid", get_id))
 
-    app.bot.set_webhook(url="https://dexmateai.onrender.com/" + BOT_TOKEN)
+    application.bot.set_webhook(url="https://dexmateai.onrender.com/" + BOT_TOKEN)
 
     print("✅ Dexmate AI Bot is Live (Free Mode)")
