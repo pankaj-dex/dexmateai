@@ -130,7 +130,7 @@ async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     threading.Thread(target=run_flask).start()
 
-    app = ApplicationBuilder().token(BOT_TOKEN).concurrent_updates(True).build()
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(CommandHandler("getid", get_id))
 
