@@ -135,7 +135,7 @@ from flask import Flask, request
 import telegram
 
 app = Flask(__name__)
-BOT_TOKEN = #"7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
+BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
 ...
 
 @app.route('/')
