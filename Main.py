@@ -25,6 +25,7 @@ app_flask = Flask(__name__)
 def index():
     return "Dexmate AI is live (Free Mode)"
 
+app = ApplicationBuilder().token(BOT_TOKEN).concurrent_updates(True).build()
 @app_flask.route(f'/{BOT_TOKEN}', methods=['POST'])
 def webhook():
     update = Update.de_json(request.get_json(force=True), app.bot)
