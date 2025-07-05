@@ -141,5 +141,12 @@ BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
 @app.route('/')
 def hello():
     return "Bot is live"
+from flask import request
+from telegram import Update
 
+@app_flask.route(f'/{BOT_TOKEN}', methods=['POST'])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), app.bot)
+    app.create_task(app.process_update(update))
+    return "ok"
 app.run(host='0.0.0.0', port=8080)
