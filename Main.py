@@ -4,15 +4,14 @@ from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters, CommandHandler
 import requests, json, os
 from datetime import datetime
-from flask import Flask
+from flask import Flask, request
 import threading
 
 # ========== KEYS & CONSTANTS ==========
-import os
-BOT_TOKEN = os.environ.get("7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA") 
-
-OPENROUTER_API_KEY = os.environ.get("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") 
+BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
+OPENROUTER_API_KEY = "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"
 DATA_FILE = "users_data.json"
+
 ADS = [
     "💡 Dexmate Pro launches 16 August with advanced features!",
     "🚀 Love Dexmate? Share it with friends!",
@@ -25,6 +24,12 @@ app_flask = Flask(__name__)
 @app_flask.route('/')
 def index():
     return "Dexmate AI is live (Free Mode)"
+
+@app_flask.route(f'/{BOT_TOKEN}', methods=['POST'])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), app.bot)
+    app.create_task(app.process_update(update))
+    return "ok"
 
 def run_flask():
     app_flask.run(host='0.0.0.0', port=8080)
@@ -124,29 +129,10 @@ async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     threading.Thread(target=run_flask).start()
 
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = ApplicationBuilder().token(BOT_TOKEN).concurrent_updates(True).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(CommandHandler("getid", get_id))
 
+    app.bot.set_webhook(url="https://dexmateai.onrender.com/" + BOT_TOKEN)
+
     print("✅ Dexmate AI Bot is Live (Free Mode)")
-   #app.run_polling()
-    # main.py
-from flask import Flask, request
-import telegram
-
-app = Flask(__name__)
-BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
-...
-
-@app.route('/')
-def hello():
-    return "Bot is live"
-from flask import request
-from telegram import Update
-
-@app_flask.route(f'/{BOT_TOKEN}', methods=['POST'])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), app.bot)
-    app.create_task(app.process_update(update))
-    return "ok"
-app.run(host='0.0.0.0', port=8080)
