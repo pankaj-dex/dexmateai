@@ -8,8 +8,10 @@ from flask import Flask
 import threading
 
 # ========== KEYS & CONSTANTS ==========
-BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
-OPENROUTER_API_KEY = "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"
+import os
+BOT_TOKEN = os.environ.get("7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA") 
+
+OPENROUTER_API_KEY = os.environ.get(""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"") 
 DATA_FILE = "users_data.json"
 ADS = [
     "💡 Dexmate Pro launches 16 August with advanced features!",
