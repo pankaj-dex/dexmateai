@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 import logging
 
-# ✅ Your actual Bot Token
+# ✅ Replace this with your bot token
 BOT_TOKEN = "6531365793:AAHQ7ZIQiMrPY5eZMbUhy5AlpkKkI0NpiYA"
 
 # ✅ Logging setup
@@ -11,16 +11,16 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# ✅ Start command
+# ✅ /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Welcome to Dexmate AI! I'm live and ready.")
+    await update.message.reply_text("✅ Dexmate AI is live and working!")
 
-# ✅ Main application
+# ✅ Main function
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
 
-    # ✅ This will run the webhook correctly for Render
+    # ✅ For Render deployment, use webhook
     app.run_webhook(
         listen="0.0.0.0",
         port=10000,
