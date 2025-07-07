@@ -3,6 +3,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
+
 WEBHOOK_URL = "https://dexmateai.onrender.com/webhook"  # Replace with your actual Render URL if different
 
 app = Flask(__name__)
