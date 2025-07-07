@@ -1,34 +1,109 @@
+# Dexmate AI - Fixed for PTB v20+
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
 from flask import Flask, request
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+import requests, json, os, threading
+from datetime import datetime
 
 BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
+OPENROUTER_API_KEY = "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"
+DATA_FILE = "users_data.json"
 
-WEBHOOK_URL = "https://dexmateai.onrender.com/webhook"  # Replace with your actual Render URL if different
+ADS = [
+    "💡 Dexmate Pro launches 16 August with advanced features!",
+    "🚀 Love Dexmate? Share it with friends!",
+    "📢 Follow us @dexmateai for coding tips!"
+]
 
-app = Flask(__name__)
+app_flask = Flask(__name__)
+@app_flask.route('/')
+def index():
+    return "Dexmate AI is live"
 
-# ====== Telegram Bot Handler ======
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Dexmate AI is Live. How can I help you?")
+def run_flask():
+    app_flask.run(host='0.0.0.0', port=8080)
 
-# ====== Set up Telegram Application ======
-application = ApplicationBuilder().token(BOT_TOKEN).build()
-application.add_handler(CommandHandler("start", start))
+def load_user_data():
+    if not os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "w") as f:
+            json.dump({}, f)
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
 
-# ====== Webhook Endpoint ======
-@app.route("/webhook", methods=["POST"])
-async def webhook():
-    if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        await application.process_update(update)
-    return "OK"
+def save_user_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f)
 
-# ====== Homepage Endpoint ======
-@app.route('/')
-def home():
-    return "🤖 Dexmate AI Bot is Running via Webhook!"
+def increment_user_count(user_id):
+    data = load_user_data()
+    uid = str(user_id)
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    if uid not in data:
+        data[uid] = {"count": 0, "date": today_str, "ad_index": 0}
+    if data[uid]["date"] != today_str:
+        data[uid]["count"] = 0
+        data[uid]["date"] = today_str
+    data[uid]["count"] += 1
+    save_user_data(data)
+    return data[uid]["count"], data[uid]["ad_index"]
 
-# ====== Run Locally (Not used on Render) ======
+def update_ad_index(user_id, index):
+    data = load_user_data()
+    uid = str(user_id)
+    if uid in data:
+        data[uid]["ad_index"] = index
+        save_user_data(data)
+
+def ask_openrouter(prompt):
+    try:
+        res = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "mistralai/mixtral-8x7b-instruct",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful AI coding assistant."},
+                    {"role": "user", "content": prompt}
+                ]
+            }
+        )
+        return res.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    text = update.message.text.strip().lower()
+    count, ad_index = increment_user_count(user_id)
+
+    if count > 5:
+        await update.message.reply_text("🚫 Free daily limit reached! Come back tomorrow.")
+        return
+
+    if text == "start":
+        keyboard = [
+            [KeyboardButton("Python"), KeyboardButton("Java")],
+            [KeyboardButton("C++"), KeyboardButton("JavaScript")]
+        ]
+        markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+        await update.message.reply_text("👇 Choose a programming language:", reply_markup=markup)
+    else:
+        await update.message.reply_text("🧠 Thinking...")
+        answer = ask_openrouter(text)
+        await update.message.reply_text(answer)
+        if count % 3 == 0:
+            await update.message.reply_text(ADS[ad_index % len(ADS)])
+            update_ad_index(user_id, ad_index + 1)
+
+async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"🆔 Your ID: {update.effective_user.id}")
+
 if __name__ == "__main__":
-    application.run_polling()
+    threading.Thread(target=run_flask).start()
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("getid", get_id))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    app.run_polling()
