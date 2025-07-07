@@ -2,40 +2,32 @@ from flask import Flask, request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-import asyncio
+BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
+WEBHOOK_URL = "https://dexmateai.onrender.com/webhook"  # Replace with your actual Render URL if different
 
 app = Flask(__name__)
 
-# Fill your token here
-BOT_TOKEN = "6531365793:AAHQ7ZIQiMrPY5eZMbUhy5AlpkKkI0NpiYA"
-
-application = ApplicationBuilder().token(BOT_TOKEN).build()
-
-# /start command
+# ====== Telegram Bot Handler ======
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Dexmate AI is live!")
+    await update.message.reply_text("✅ Dexmate AI is Live. How can I help you?")
 
-# Register handlers
+# ====== Set up Telegram Application ======
+application = ApplicationBuilder().token(BOT_TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 
-# Telegram webhook handler
-@app.route("/", methods=["POST"])
-def webhook():
+# ====== Webhook Endpoint ======
+@app.route("/webhook", methods=["POST"])
+async def webhook():
     if request.method == "POST":
         update = Update.de_json(request.get_json(force=True), application.bot)
-        asyncio.run(application.process_update(update))
-    return "ok"
+        await application.process_update(update)
+    return "OK"
 
-# Health check
-@app.route("/", methods=["GET"])
-def index():
-    return "Dexmate AI running!"
+# ====== Homepage Endpoint ======
+@app.route('/')
+def home():
+    return "🤖 Dexmate AI Bot is Running via Webhook!"
 
+# ====== Run Locally (Not used on Render) ======
 if __name__ == "__main__":
-    # Set the webhook (you only need to do this once)
-    import requests
-    webhook_url = "https://dexmateai.onrender.com"
-    set_url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={webhook_url}"
-    print("Setting webhook:", requests.get(set_url).text)
-
-    app.run(host="0.0.0.0", port=10000)
+    application.run_polling()
