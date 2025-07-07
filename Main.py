@@ -1,76 +1,42 @@
-# Dexmate AI - Free Mode (until 16 August 2025)
-
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters, CommandHandler
+from flask import Flask, request
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
+from telegram.ext import (
+    Application,
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 import requests, json, os
 from datetime import datetime
-from flask import Flask, request
+import asyncio
 import threading
 
-# ========== KEYS & CONSTANTS ==========
+# ================== CONFIG ==================
 BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
 OPENROUTER_API_KEY = "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"
-DATA_FILE = "users_data.json"
+WEBHOOK_URL = f"https://dexmateai.onrender.com/{BOT_TOKEN}"  # Replace if needed
 
-ADS = [
-    "💡 Dexmate Pro launches 16 August with advanced features!",
-    "🚀 Love Dexmate? Share it with friends!",
-    "📢 Follow us @dexmateai for coding tips!"
-]
+# =============== FLASK APP ==================
+flask_app = Flask(__name__)
 
-# ========== FLASK SERVER ==========
-app_flask = Flask(__name__)
-application = ApplicationBuilder().token(BOT_TOKEN).build()
-
-@app_flask.route('/')
+@flask_app.route('/')
 def index():
-    return "Dexmate AI is live (Free Mode)"
+    return "Dexmate AI is Live!"
 
-@app_flask.route(f'/{BOT_TOKEN}', methods=['POST'])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    application.create_task(application.process_update(update))
-    return "ok"
+@flask_app.route(f"/{BOT_TOKEN}", methods=["POST"])
+async def webhook():
+    if request.method == "POST":
+        data = request.get_json(force=True)
+        update = Update.de_json(data, application.bot)
+        await application.process_update(update)
+        return "OK"
 
 def run_flask():
-    app_flask.run(host='0.0.0.0', port=8080)
+    flask_app.run(host="0.0.0.0", port=8080)
 
-# ========== USER DATA SYSTEM ==========
-def load_user_data():
-    if not os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "w") as f:
-            json.dump({}, f)
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
-
-def save_user_data(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f)
-
-def is_premium_period():
-    return datetime.now() >= datetime(2025, 8, 16)
-
-def increment_user_count(user_id):
-    data = load_user_data()
-    uid = str(user_id)
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    if uid not in data:
-        data[uid] = {"count": 0, "date": today_str, "ad_index": 0}
-    if data[uid]["date"] != today_str:
-        data[uid]["count"] = 0
-        data[uid]["date"] = today_str
-    data[uid]["count"] += 1
-    save_user_data(data)
-    return data[uid]["count"], data[uid]["ad_index"]
-
-def update_ad_index(user_id, index):
-    data = load_user_data()
-    uid = str(user_id)
-    if uid in data:
-        data[uid]["ad_index"] = index
-        save_user_data(data)
-
-# ========== AI FUNCTION ==========
+# =============== AI FUNCTION ===============
 def ask_openrouter(prompt, model="mistralai/mixtral-8x7b-instruct"):
     try:
         res = requests.post(
@@ -92,42 +58,36 @@ def ask_openrouter(prompt, model="mistralai/mixtral-8x7b-instruct"):
         return f"❌ Error: {str(e)}"
 
 # ========== HANDLERS ==========
-async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    text = update.message.text.strip().lower()
-    count, ad_index = increment_user_count(user_id)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [KeyboardButton("Python"), KeyboardButton("Java")],
+        [KeyboardButton("C++"), KeyboardButton("JavaScript")]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text("Choose a language to learn 👇", reply_markup=reply_markup)
 
-    if not is_premium_period() and count > 5:
-        await update.message.reply_text("🚫 Free daily limit reached! Come back tomorrow.")
-        return
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("💡 Thinking...")
+    response = ask_openrouter(update.message.text)
+    await update.message.reply_text(response)
 
-    if text == "start":
-        keyboard = [
-            [KeyboardButton("Python"), KeyboardButton("Java")],
-            [KeyboardButton("C++"), KeyboardButton("JavaScript")]
-        ]
-        reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
-        await update.message.reply_text("👇 What language do you want to learn?", reply_markup=reply_markup)
-    else:
-        await update.message.reply_text("🧠 Thinking...")
-        answer = ask_openrouter(text)
-        await update.message.reply_text(answer)
+async def getid(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"🆔 Your Telegram ID: {update.message.from_user.id}")
 
-        if count % 3 == 0:
-            await update.message.reply_text(ADS[ad_index % len(ADS)])
-            update_ad_index(user_id, ad_index + 1)
+# =========== MAIN ============
+if __name__ == "__main__":
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
 
-async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid = update.message.from_user.id
-    await update.message.reply_text(f"🆔 Your Telegram ID: {uid}")
+    # Add handlers
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("getid", getid))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# ========== RUN ==========
-if __name__ == '__main__':
+    # Start Flask server in new thread
     threading.Thread(target=run_flask).start()
 
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    application.add_handler(CommandHandler("getid", get_id))
-
-    application.bot.set_webhook(url="https://dexmateai.onrender.com/" + BOT_TOKEN)
-
-    print("✅ Dexmate AI Bot is Live (Free Mode)")
+    # Set webhook and run application
+    async def run():
+        await application.bot.set_webhook(WEBHOOK_URL)
+        print("✅ Webhook set. Dexmate AI is Live.")
+    asyncio.run(run())
