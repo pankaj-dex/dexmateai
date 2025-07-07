@@ -25,9 +25,9 @@ def home():
     return "Dexmate AI is Live!"
 
 @flask_app.route(f"/{BOT_TOKEN}", methods=["POST"])
-async def webhook():
+def webhook():
     update = Update.de_json(request.get_json(force=True), telegram_app.bot)
-    await telegram_app.process_update(update)
+    telegram_app.create_task(telegram_app.process_update(update))
     return "ok"
 
 def run_flask():
