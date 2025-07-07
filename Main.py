@@ -1,57 +1,51 @@
-# Dexmate AI - Free Mode (Until 16 August 2025)
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
-from flask import Flask, request
-import threading, os, json, requests
-from datetime import datetime
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters import requests, json, os from datetime import datetime
 
-# === FILLED API KEYS ===
-BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
-OPENROUTER_API_KEY = "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"
+========== CONFIGURATION ==========
 
-app = Flask(__name__)
-application = ApplicationBuilder().token(BOT_TOKEN).build()
+BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA" OPENROUTER_API_KEY = "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" DATA_FILE = "users_data.json"
 
-@app.route('/')
-def home():
-    return "✅ Dexmate AI is live!"
+ADS = [ "💡 Dexmate Pro launches 16 August with advanced features!", "🚀 Love Dexmate? Share it with friends!", "📢 Follow us @dexmateai for coding tips!" ]
 
-@app.route(f'/{BOT_TOKEN}', methods=['POST'])
-def receive_update():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    application.create_task(application.process_update(update))
-    return "ok"
+========== USER DATA SYSTEM ==========
 
-def ask_openrouter(prompt):
-    try:
-        res = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": "mistralai/mixtral-8x7b-instruct",
-                "messages": [{"role": "user", "content": prompt}]
-            }
-        )
-        return res.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        return f"Error: {e}"
+def load_user_data(): if not os.path.exists(DATA_FILE): with open(DATA_FILE, "w") as f: json.dump({}, f) with open(DATA_FILE, "r") as f: return json.load(f)
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-    await update.message.reply_text("🧠 Thinking...")
-    answer = ask_openrouter(text)
-    await update.message.reply_text(answer)
+def save_user_data(data): with open(DATA_FILE, "w") as f: json.dump(data, f)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[KeyboardButton("Python")], [KeyboardButton("C++")]]
-    await update.message.reply_text("Choose your language:", reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True))
+def is_premium_period(): today = datetime.now() return today >= datetime(2025, 8, 16)
 
-application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+def increment_user_count(user_id): data = load_user_data() uid = str(user_id) today_str = datetime.now().strftime("%Y-%m-%d") if uid not in data: data[uid] = {"count": 0, "date": today_str, "ad_index": 0} if data[uid]["date"] != today_str: data[uid]["count"] = 0 data[uid]["date"] = today_str data[uid]["count"] += 1 save_user_data(data) return data[uid]["count"], data[uid]["ad_index"]
 
-def run_flask():
-    app.run(host='0.0.0.0', port=8080)
+def update_ad_index(user_id, index): data = load_user_data() uid = str(user_id) if uid in data: data[uid]["ad_index"] = index save_user_data(data)
 
-if __name__ == '__main__':
-    threading.Thread(target=run_flask).start()
-    application.run_polling()
+========== AI FUNCTION ==========
+
+def ask_openrouter(prompt, model="mistralai/mixtral-8x7b-instruct"): try: res = requests.post( "https://openrouter.ai/api/v1/chat/completions", headers={ "Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json" }, json={ "model": model, "messages": [ {"role": "system", "content": "You are a helpful coding teacher."}, {"role": "user", "content": prompt} ] } ) return res.json()["choices"][0]["message"]["content"] except Exception as e: return f"❌ Error: {str(e)}"
+
+========== HANDLERS ==========
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE): keyboard = [ [KeyboardButton("Python"), KeyboardButton("Java")], [KeyboardButton("C++"), KeyboardButton("JavaScript")] ] reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True) await update.message.reply_text("👇 What language do you want to learn?", reply_markup=reply_markup)
+
+async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE): user_id = update.message.from_user.id text = update.message.text.strip().lower() count, ad_index = increment_user_count(user_id)
+
+if not is_premium_period() and count > 5:
+    await update.message.reply_text("🚫 Free daily limit reached! Come back tomorrow.")
+    return
+
+await update.message.reply_text("🧠 Thinking...")
+response = ask_openrouter(text)
+await update.message.reply_text(response)
+
+if count % 3 == 0:
+    await update.message.reply_text(ADS[ad_index % len(ADS)])
+    update_ad_index(user_id, ad_index + 1)
+
+async def getid(update: Update, context: ContextTypes.DEFAULT_TYPE): uid = update.message.from_user.id await update.message.reply_text(f"🆔 Your Telegram ID: {uid}")
+
+========== RUNNING THE BOT ==========
+
+if name == 'main': app = ApplicationBuilder().token(BOT_TOKEN).build() app.add_handler(CommandHandler("start", start)) app.add_handler(CommandHandler("getid", getid)) app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+
+print("✅ Dexmate AI Bot is Live")
+app.run_polling()
+
