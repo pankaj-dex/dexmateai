@@ -1,28 +1,34 @@
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
+from telegram.ext import (
+    ApplicationBuilder,
+    ContextTypes,
+    CommandHandler,
+    MessageHandler,
+    filters,
+)
 from flask import Flask, request
 import threading, os, json, requests
 from datetime import datetime
 
-# ========= KEYS =========
+# ==== YOUR KEYS (filled in) ====
 BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
 OPENROUTER_API_KEY = "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"
 
-# ========= ADS & FILE =========
+# ==== Constants ====
 DATA_FILE = "users.json"
 ADS = [
     "💡 Dexmate Pro launches 16 August!",
     "🚀 Share Dexmate AI with your friends!",
-    "📢 Follow @dexmateai for coding tips!"
+    "📢 Follow @dexmateai for coding tips!",
 ]
 
-# ========= FLASK SETUP =========
+# ==== Flask App for Webhook ====
 flask_app = Flask(__name__)
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 @flask_app.route("/")
 def home():
-    return "Dexmate AI is Live!"
+    return "Dexmate AI is live!"
 
 @flask_app.route(f"/{BOT_TOKEN}", methods=["POST"])
 async def webhook():
@@ -33,7 +39,7 @@ async def webhook():
 def run_flask():
     flask_app.run(host="0.0.0.0", port=8080)
 
-# ========= USER LOGIC =========
+# ==== User Limit Logic ====
 def load_data():
     if not os.path.exists(DATA_FILE):
         with open(DATA_FILE, "w") as f:
@@ -68,7 +74,7 @@ def update_ad(uid, index):
 def is_premium():
     return datetime.now() >= datetime(2025, 8, 16)
 
-# ========= AI CORE =========
+# ==== AI API ====
 def ask_openrouter(prompt):
     try:
         res = requests.post(
@@ -89,14 +95,14 @@ def ask_openrouter(prompt):
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
-# ========= HANDLERS =========
+# ==== Telegram Handlers ====
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.message.from_user.id
     text = update.message.text.strip()
     count, ad_index = user_count(uid)
 
     if not is_premium() and count > 5:
-        await update.message.reply_text("🚫 Daily limit reached. Try again tomorrow.")
+        await update.message.reply_text("🚫 Daily free limit reached. Come back tomorrow.")
         return
 
     if text.lower() == "start":
@@ -109,16 +115,4 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(reply)
         if count % 3 == 0:
             await update.message.reply_text(ADS[ad_index % len(ADS)])
-            update_ad(uid, ad_index + 1)
-
-async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"🆔 Your ID: {update.message.from_user.id}")
-
-# ========= MAIN =========
-if __name__ == "__main__":
-    telegram_app.add_handler(CommandHandler("getid", get_id))
-    telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-
-    threading.Thread(target=run_flask).start()
-    telegram_app.bot.set_webhook(f"https://dexmateai.onrender.com/{BOT_TOKEN}")
-    print("✅ Bot running at https://dexmateai.onrender.com")
+            update_ad(uid,
