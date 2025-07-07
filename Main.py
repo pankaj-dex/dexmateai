@@ -115,4 +115,17 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(reply)
         if count % 3 == 0:
             await update.message.reply_text(ADS[ad_index % len(ADS)])
-            update_ad(uid,
+            update_ad(uid, ad_index + 1)
+
+async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"🆔 Your ID: {update.message.from_user.id}")
+
+# ==== Start Everything ====
+if __name__ == "__main__":
+    telegram_app.add_handler(CommandHandler("getid", get_id))
+    telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+
+    threading.Thread(target=run_flask).start()
+
+    telegram_app.bot.set_webhook(f"https://dexmateai.onrender.com/{BOT_TOKEN}")
+    print("✅ Bot is live with webhook.")
