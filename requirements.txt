@@ -1,3 +1,6 @@
-python-telegram-bot==22.2
 Flask==3.1.1
-aiohttp
+python-telegram-bot==22.2
+httpx==0.28.1
+aiohttp==3.9.5
+certifi==2025.6.15
+openai==1.30.1
