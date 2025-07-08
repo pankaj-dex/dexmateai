@@ -1,4 +1,4 @@
-$Dexmate AI - Production-Ready Telegram Bot
+#Dexmate AI - Production-Ready Telegram Bot
 
 #Version: Free until 16 August | Built to scale | Easy to update
 
