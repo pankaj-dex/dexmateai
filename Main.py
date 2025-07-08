@@ -121,5 +121,6 @@ if __name__ == "__main__":
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     threading.Thread(target=run_flask).start()
-    app.bot.set_webhook(f"https://dexmateai.onrender.com/{BOT_TOKEN}")
-    print("✅ Bot is Live on Render!")
+    
+import asyncio
+asyncio.run(app.bot.set_webhook(f"https://dexmateai.onrender.com/{BOT_TOKEN}"))
