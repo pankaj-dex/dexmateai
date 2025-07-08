@@ -1,5 +1,5 @@
+
 import logging
-import os
 import asyncio
 from flask import Flask, request
 from telegram import Update
@@ -7,57 +7,60 @@ from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
-    ContextTypes,
     filters,
+    ContextTypes,
 )
 
-# Your bot token
+# ==== Fill These ====
 BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
 WEBHOOK_URL = f"https://dexmateai.onrender.com/{BOT_TOKEN}"
+# ====================
 
-# Set up logging
+# Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Create Flask app
 app = Flask(__name__)
 
-# Create Telegram bot application
+# Create Telegram application
 bot_app = Application.builder().token(BOT_TOKEN).build()
 
-# /start command handler
+
+# --- Handlers ---
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! I’m Dexmate AI 🤖. How can I help you today?")
+    await update.message.reply_text("👋 Hello! I’m Dexmate AI. How can I help you?")
 
-# Text message handler
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_msg = update.message.text
-    await update.message.reply_text(f"You said: {user_msg}")
+async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"You said: {update.message.text}")
 
-# Set handlers
+
+# Add handlers
 bot_app.add_handler(CommandHandler("start", start))
-bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_all))
 
-# Flask webhook endpoint
+
+# --- Flask route for webhook ---
 @app.route(f"/{BOT_TOKEN}", methods=["POST"])
-def receive_update():
+def webhook():
     update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    asyncio.run(bot_app.initialize())  # REQUIRED
+    asyncio.run(bot_app.initialize())
     asyncio.run(bot_app.process_update(update))
     return "OK"
 
-# Root endpoint for health check
+
+# --- Home route ---
 @app.route("/", methods=["GET", "HEAD"])
-def index():
-    return "Dexmate AI bot is running!", 200
+def home():
+    return "Dexmate AI Bot is Live!"
 
-# Start webhook on launch
-async def set_webhook():
-    await bot_app.bot.set_webhook(WEBHOOK_URL)
-    print("✅ Webhook set. Bot is ready!")
-
+# --- Start the Flask app ---
 if __name__ == "__main__":
-    # Set webhook before running Flask
+    async def set_webhook():
+        await bot_app.bot.set_webhook(WEBHOOK_URL)
+        logger.info("✅ Webhook set. Bot is ready!")
+
     asyncio.run(set_webhook())
-    print("✅ Bot is Live on Render!")
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    logger.info("✅ Bot is Live on Render!")
+    app.run(host="0.0.0.0", port=10000)
