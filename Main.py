@@ -1,82 +1,63 @@
 import logging
+import os
 import asyncio
-import threading
 from flask import Flask, request
-
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, ContextTypes,
-    MessageHandler, filters
+    Application,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
 )
 
-# ✅ Your bot token
+# Your bot token
 BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
+WEBHOOK_URL = f"https://dexmateai.onrender.com/{BOT_TOKEN}"
 
-# ✅ Flask app
-app_flask = Flask(__name__)
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# ✅ Create Application (but not yet initialized)
-bot_app = ApplicationBuilder().token(BOT_TOKEN).build()
+# Create Flask app
+app = Flask(__name__)
 
-# ✅ Home route
-@app_flask.route("/", methods=["GET"])
-def home():
-    return "✅ Dexmate AI Bot is running!"
+# Create Telegram bot application
+bot_app = Application.builder().token(BOT_TOKEN).build()
 
-# ✅ Telegram webhook receiver
-@app_flask.route(f"/{BOT_TOKEN}", methods=["POST"])
+# /start command handler
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Hello! I’m Dexmate AI 🤖. How can I help you today?")
+
+# Text message handler
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_msg = update.message.text
+    await update.message.reply_text(f"You said: {user_msg}")
+
+# Set handlers
+bot_app.add_handler(CommandHandler("start", start))
+bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+# Flask webhook endpoint
+@app.route(f"/{BOT_TOKEN}", methods=["POST"])
 def receive_update():
     update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    # 👉 Must use initialized application!
-    asyncio.run(handle_update(update))
-    return "OK", 200
+    asyncio.run(bot_app.initialize())  # REQUIRED
+    asyncio.run(bot_app.process_update(update))
+    return "OK"
 
-# ✅ Handler to safely process update
-async def handle_update(update: Update):
-    if not bot_app._initialized:
-        await bot_app.initialize()
-    await bot_app.process_update(update)
+# Root endpoint for health check
+@app.route("/", methods=["GET", "HEAD"])
+def index():
+    return "Dexmate AI bot is running!", 200
 
-# ✅ Logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
-
-# ✅ /start command
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[KeyboardButton("Python")], [KeyboardButton("Java")]]
-    markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text(
-        "👋 Welcome to Dexmate AI!\nChoose your language:",
-        reply_markup=markup
-    )
-
-# ✅ Text message handler
-async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.lower()
-    if "python" in text:
-        await update.message.reply_text("🐍 You chose Python!")
-    elif "java" in text:
-        await update.message.reply_text("☕ You chose Java!")
-    else:
-        await update.message.reply_text("❗ Please choose Python or Java.")
-
-# ✅ Add handlers
-bot_app.add_handler(CommandHandler("start", start))
-bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-
-# ✅ Run Flask server in background
-def run_flask():
-    app_flask.run(host="0.0.0.0", port=8080)
-
-# ✅ Main async runner
-async def main():
-    await bot_app.initialize()  # Required!
-    await bot_app.bot.set_webhook(f"https://dexmateai.onrender.com/{BOT_TOKEN}")
+# Start webhook on launch
+async def set_webhook():
+    await bot_app.bot.set_webhook(WEBHOOK_URL)
     print("✅ Webhook set. Bot is ready!")
 
-# ✅ Run both Flask and Telegram initialization
 if __name__ == "__main__":
-    threading.Thread(target=run_flask).start()
-    asyncio.run(main())
+    # Set webhook before running Flask
+    asyncio.run(set_webhook())
+    print("✅ Bot is Live on Render!")
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
