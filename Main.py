@@ -1,4 +1,4 @@
-import os
+jiimport os
 import logging
 import asyncio
 import openai
@@ -77,4 +77,4 @@ if __name__ == "__main__":
     logger.info("✅ Bot is Live on Render!")
     
     if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+        app.run(host="0.0.0.0", port=10000)
