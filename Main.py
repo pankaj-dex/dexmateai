@@ -116,6 +116,11 @@ async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🆔 Your ID: {update.message.from_user.id}")
 
 # ==== MAIN ====
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [[KeyboardButton("Python")], [KeyboardButton("Java")]]
+    markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text("👋 Welcome to Dexmate AI!\nChoose your language:", reply_markup=markup)
+
 if __name__ == "__main__":
     app.add_handler(CommandHandler("getid", get_id))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
