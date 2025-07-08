@@ -9,22 +9,33 @@ from telegram.ext import (
     MessageHandler, filters
 )
 
-# ✅ Bot Token
+# ✅ Your bot token
 BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
 
-# ✅ Flask App
+# ✅ Flask app
 app_flask = Flask(__name__)
 
+# ✅ Create Application (but not yet initialized)
+bot_app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+# ✅ Home route
 @app_flask.route("/", methods=["GET"])
 def home():
     return "✅ Dexmate AI Bot is running!"
 
-# ✅ Telegram webhook route to receive updates
+# ✅ Telegram webhook receiver
 @app_flask.route(f"/{BOT_TOKEN}", methods=["POST"])
 def receive_update():
     update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    asyncio.run(bot_app.process_update(update))
+    # 👉 Must use initialized application!
+    asyncio.run(handle_update(update))
     return "OK", 200
+
+# ✅ Handler to safely process update
+async def handle_update(update: Update):
+    if not bot_app._initialized:
+        await bot_app.initialize()
+    await bot_app.process_update(update)
 
 # ✅ Logging
 logging.basicConfig(
@@ -32,7 +43,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# ✅ /start handler
+# ✅ /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[KeyboardButton("Python")], [KeyboardButton("Java")]]
     markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -41,33 +52,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=markup
     )
 
-# ✅ Message handler
+# ✅ Text message handler
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.lower()
     if "python" in text:
-        await update.message.reply_text("🧠 You chose Python!")
+        await update.message.reply_text("🐍 You chose Python!")
     elif "java" in text:
         await update.message.reply_text("☕ You chose Java!")
     else:
-        await update.message.reply_text("Please choose a valid option.")
+        await update.message.reply_text("❗ Please choose Python or Java.")
 
-# ✅ Build the bot app
-bot_app = ApplicationBuilder().token(BOT_TOKEN).build()
+# ✅ Add handlers
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-# ✅ Function to run Flask server
+# ✅ Run Flask server in background
 def run_flask():
     app_flask.run(host="0.0.0.0", port=8080)
 
-# ✅ Main entry
+# ✅ Main async runner
+async def main():
+    await bot_app.initialize()  # Required!
+    await bot_app.bot.set_webhook(f"https://dexmateai.onrender.com/{BOT_TOKEN}")
+    print("✅ Webhook set. Bot is ready!")
+
+# ✅ Run both Flask and Telegram initialization
 if __name__ == "__main__":
-    # Start Flask server in a new thread
     threading.Thread(target=run_flask).start()
-
-    # Set webhook and run the app
-    async def main():
-        await bot_app.bot.set_webhook(f"https://dexmateai.onrender.com/{BOT_TOKEN}")
-        print("✅ Webhook set successfully.")
-
     asyncio.run(main())
