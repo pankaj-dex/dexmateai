@@ -1,53 +1,52 @@
 import logging
-from flask import Flask, request
+from flask import Flask
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import threading
 import asyncio
+import aiohttp
 
-# Bot token (already filled)
+# ✅ Your bot token
 BOT_TOKEN = "7866890680:AAfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
 
-# Flask app setup
-app_flask = Flask(__name__)
+# ✅ Flask app for health check
+flask_app = Flask(__name__)
 
-@app_flask.route("/", methods=["GET"])
+@flask_app.route("/", methods=["GET"])
 def home():
     return "Dexmate AI Bot is running!"
 
-# Logging
+# ✅ Logging setup
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
-# /start command handler
+# ✅ /start handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[KeyboardButton("Python")], [KeyboardButton("Java")]]
     markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text(
-        "👋 Welcome to Dexmate AI!\nChoose your language:", reply_markup=markup
-    )
+    await update.message.reply_text("👋 Welcome to Dexmate AI!\nChoose your language:", reply_markup=markup)
 
-# handle user text replies
+# ✅ Text message handler
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.lower()
     if "python" in text:
-        await update.message.reply_text("You chose Python. How can I help?")
+        await update.message.reply_text("You selected Python.")
     elif "java" in text:
-        await update.message.reply_text("You chose Java. What's your query?")
+        await update.message.reply_text("You selected Java.")
     else:
         await update.message.reply_text("Please choose a valid language.")
 
-# getid command
+# ✅ Get ID command
 async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"Your ID is: {update.effective_user.id}")
+    await update.message.reply_text(f"Your Telegram ID: {update.effective_user.id}")
 
-# run flask in background thread
+# ✅ Flask thread
 def run_flask():
-    app_flask.run(host="0.0.0.0", port=8080)
+    flask_app.run(host="0.0.0.0", port=8080)
 
-# Main app
+# ✅ Main app
 if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
@@ -55,7 +54,16 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("getid", get_id))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
+    # Start Flask in a new thread
     threading.Thread(target=run_flask).start()
 
-    asyncio.run(app.bot.set_webhook("https://dexmateai.onrender.com/" + BOT_TOKEN))
-    app.run_polling()  # Optional backup for local testing (not needed on Render)
+    # Set webhook with correct API format
+    async def set_webhook():
+        webhook_url = f"https://dexmateai.onrender.com"
+        set_url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={webhook_url}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(set_url) as resp:
+                print(await resp.text())
+
+    asyncio.run(set_webhook())
+    app.run_polling()  # Optional backup if webhook fails
