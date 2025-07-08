@@ -1,42 +1,78 @@
-#Dexmate AI - Production-Ready Telegram Bot
+import os
+import logging
+import asyncio
+import openai
+from flask import Flask, request
+from telegram import Update, Bot
+from telegram.ext import (
+    ApplicationBuilder,
+    ContextTypes,
+    MessageHandler,
+    filters
+)
 
-#Version: Free until 16 August | Built to scale | Easy to update
+# Set your bot token and OpenAI API key
+BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
+OPENAI_API_KEY = "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"
+openai.api_key = OPENAI_API_KEY
 
-from flask import Flask, request from telegram import Update, Bot from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters import openai import logging import asyncio import os
+# Logging setup
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-#=== CONFIGURATION ===
+# Initialize Flask app
+app = Flask(__name__)
 
-BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA" OPENROUTER_API_KEY = "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" BOT_USERNAME = "Dex_Ai_coderbot" BASE_URL = f"https://dexmateai.onrender.com/{BOT_TOKEN}"
+# Global bot app instance
+bot_app = None
 
-#=== LOGGING ===
+# Core AI reply handler
+async def ai_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_message = update.message.text
+    if user_message.lower() in ["hello", "hi", "hey"]:
+        await update.message.reply_text("How are you? Do you need any help? How can I help you?")
+    else:
+        try:
+            # Call OpenAI to get a response
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant who replies to coding and programming questions for free."},
+                    {"role": "user", "content": user_message}
+                ]
+            )
+            reply = response["choices"][0]["message"]["content"]
+            await update.message.reply_text(reply)
+        except Exception as e:
+            logger.error(f"OpenAI error: {e}")
+            await update.message.reply_text("❌ Sorry, I couldn't process your request right now.")
 
-logging.basicConfig(level=logging.INFO) logger = logging.getLogger(name)
+# Webhook endpoint for Telegram
+@app.route(f"/{BOT_TOKEN}", methods=["POST"])
+def receive_update():
+    from telegram import Update
+    update = Update.de_json(request.get_json(force=True), bot_app.bot)
+    asyncio.run(bot_app.process_update(update))
+    return "OK"
 
-#=== FLASK SETUP ===
+# Home route
+@app.route('/')
+def home():
+    return "🤖 Dexmate AI Bot is Live!"
 
-app = Flask(name)
+# Main startup
+if __name__ == "__main__":
+    async def main():
+        global bot_app
+        bot_app = ApplicationBuilder().token(BOT_TOKEN).build()
+        bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_reply))
 
-#=== GPT-4 API Function ===
+        # Set webhook
+        url = f"https://dexmateai.onrender.com/{BOT_TOKEN}"
+        await bot_app.bot.set_webhook(url)
 
-async def get_ai_reply(prompt): try: import httpx headers = { "Authorization": f"Bearer {OPENROUTER_API_KEY}", "HTTP-Referer": "https://chat.openai.com", "X-Title": "Dexmate AI" } payload = { "model": "openrouter/openai/gpt-4", "messages": [ {"role": "user", "content": prompt} ] } async with httpx.AsyncClient() as client: response = await client.post("https://openrouter.ai/api/v1/chat/completions", json=payload, headers=headers) return response.json()["choices"][0]["message"]["content"] except Exception as e: return "⚠️ Sorry, I couldn't process your request. Please try again later."
+        logger.info("✅ Webhook set. Bot is ready!")
 
-#=== MESSAGE HANDLER ===
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE): user_message = update.message.text.strip().lower() if user_message in ["hello", "hi", "hey"]: await update.message.reply_text("👋 How are you? Do you need any help? How can I help you?") else: await update.message.reply_text("🧠 Thinking... Please wait.") reply = await get_ai_reply(update.message.text) await update.message.reply_text(reply)
-
-#=== TELEGRAM SETUP ===
-
-bot_app = ApplicationBuilder().token(BOT_TOKEN).build() bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-#=== FLASK ENDPOINT ===
-
-@app.route(f"/{BOT_TOKEN}", methods=["POST"]) def receive_update(): update = Update.de_json(request.get_json(force=True), bot_app.bot) asyncio.run(bot_app.process_update(update)) return "OK"
-
-@app.route("/") def index(): return "🤖 Dexmate AI is Running!"
-
-#=== SET WEBHOOK ===
-
-async def set_webhook(): bot = Bot(token=BOT_TOKEN) await bot.set_webhook(BASE_URL) logger.info("✅ Webhook set. Bot is ready!")
-
-if name == 'main': loop = asyncio.get_event_loop() loop.run_until_complete(set_webhook()) logger.info("✅ Bot is Live on Render!") app.run(host="0.0.0.0", port=10000)
-
+    asyncio.run(main())
+    logger.info("✅ Bot is Live on Render!")
+    app.run(host="0.
