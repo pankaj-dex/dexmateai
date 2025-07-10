@@ -1,66 +1,90 @@
-import os
-import logging
-import openai
-import asyncio
-from flask import Flask, request
-from telegram import Update, Bot
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+import os, wave, json, atexit
 
-# Load secrets
-BOT_TOKEN = os.getenv("BOT_TOKEN", "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA").strip()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "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").strip()
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://dexmateai.onrender.com/webhook").strip()
+# (Optional) Vosk for offline ASR
+try:
+    from vosk import Model, KaldiRecognizer
+except ImportError:
+    Model = None
 
-# Init Flask and Logger
-app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
+# Initialize Telegram Bot (set your BOT_TOKEN environment variable)
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+updater = Updater(token=BOT_TOKEN, use_context=True)
+dispatcher = updater.dispatcher
 
-# Set OpenAI API key
-openai.api_key = OPENAI_API_KEY
+# Initialize Vosk model if available
+if Model:
+    vosk_model = Model(lang="en-us")  # path to model directory or 'en-us'
+    rec = KaldiRecognizer(vosk_model, 16000)
+else:
+    rec = None
 
-# Init Telegram Application
-bot_app = ApplicationBuilder().token(BOT_TOKEN).build()
+# In-memory chat logs: {chat_id: [messages]}
+chat_history = {}
 
-# Message Handling
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_msg = update.message.text.lower()
+# /start command
+def start(update, context):
+    chat_id = update.effective_chat.id
+    context.bot.send_message(chat_id, "Hello! Send me a text, photo, or voice. I'm here to help with your coding questions.")
 
-    if "hello" in user_msg or "hi" in user_msg:
-        reply = "How are you? Do you need any help? How can I help you?"
+# Handle incoming text messages
+def handle_text(update, context):
+    chat_id = update.effective_chat.id
+    user_text = update.message.text
+    chat_history.setdefault(chat_id, []).append({"role": "user", "text": user_text})
+    # TODO: Call LLM or code model here to generate a response
+    # For now, just echo back:
+    bot_response = f"You said: {user_text}"
+    chat_history[chat_id].append({"role": "bot", "text": bot_response})
+    context.bot.send_message(chat_id, bot_response)
+
+# Handle incoming photos
+def handle_photo(update, context):
+    chat_id = update.effective_chat.id
+    photo = update.message.photo[-1]
+    file_id = photo.file_id
+    new_file = context.bot.get_file(file_id)
+    os.makedirs("downloads", exist_ok=True)
+    file_path = f"downloads/{file_id}.jpg"
+    new_file.download(file_path)
+    chat_history.setdefault(chat_id, []).append({"role": "user", "text": f"<Photo saved at {file_path}>"})
+    context.bot.send_message(chat_id, "Photo received and saved. Thanks!")
+
+# Handle incoming voice messages (transcribe with Vosk)
+def handle_voice(update, context):
+    chat_id = update.effective_chat.id
+    voice = update.message.voice
+    file_id = voice.file_id
+    new_file = context.bot.get_file(file_id)
+    os.makedirs("downloads", exist_ok=True)
+    ogg_path = f"downloads/{file_id}.oga"
+    new_file.download(ogg_path)
+    # Convert OGG to WAV for Vosk
+    wav_path = ogg_path.replace(".oga", ".wav")
+    os.system(f"ffmpeg -y -i {ogg_path} -ar 16000 -ac 1 {wav_path}")
+    if rec:
+        wf = wave.open(wav_path, "rb")
+        rec.AcceptWaveform(wf.readframes(wf.getnframes()))
+        result = json.loads(rec.FinalResult())
+        text = result.get("text", "")
     else:
-        try:
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": update.message.text}]
-            )
-            reply = response['choices'][0]['message']['content']
-        except Exception as e:
-            logging.error(f"OpenAI error: {e}")
-            reply = "Sorry, something went wrong while generating the answer."
+        text = "<transcription disabled>"
+    chat_history.setdefault(chat_id, []).append({"role": "user", "text": text})
+    context.bot.send_message(chat_id, f"You (via voice): {text}")
 
-    await update.message.reply_text(reply)
+# Save chat history to a file on exit
+def save_logs():
+    with open("chat_logs.json", "w") as f:
+        json.dump(chat_history, f, indent=2)
 
-# Register handler
-bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+# Register handlers
+dispatcher.add_handler(CommandHandler("start", start))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_text))
+dispatcher.add_handler(MessageHandler(Filters.photo, handle_photo))
+dispatcher.add_handler(MessageHandler(Filters.voice, handle_voice))
+atexit.register(save_logs)
 
-# Flask route for webhook
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), bot_app.bot)
-        asyncio.run(bot_app.process_update(update))
-        return "ok"
-    return "invalid"
-
-# Root route
-@app.route("/", methods=["GET"])
-def index():
-    return "Bot is running!"
-
-# Set webhook and run
-if __name__ == "__main__":
-    bot = Bot(BOT_TOKEN)
-    asyncio.run(bot.set_webhook(url=WEBHOOK_URL + "/webhook"))
-    logging.info("✅ Webhook set. Bot is ready!")
-    logging.info("✅ Bot is Live on Render!")
-    app.run(host="0.0.0.0", port=10000)
+# Start the bot
+if __name__ == '__main__':
+    updater.start_polling()
+    updater.idle()
