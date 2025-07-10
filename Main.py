@@ -1,9 +1,10 @@
-import os 
+import asyncio
+from flask import Flask, request
+from telegram import Update, Bot
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+import openai
 import logging
-import asyncio from flask import Flask,
-request 
-from telegram import Update,
-Bot from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters import openai
+import os
 
 #=== CONFIGURATION ===
 
