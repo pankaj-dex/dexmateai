@@ -11,7 +11,7 @@ from telegram.ext import (
 # Load environment variables or use defaults.
 TELEGRAM_TOKEN = os.getenv("BOT_TOKEN", "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "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")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://<your-domain-or-ngrok>/webhook")
+WEBHOOK_URL = "https://dexmateai.onrender.com/webhook"
 
 # 2. Logging configuration for diagnostics3
 logging.basicConfig(
