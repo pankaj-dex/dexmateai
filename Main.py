@@ -84,7 +84,7 @@ def start_bot():
     if not hasattr(app, 'bot_started'):
         app.bot_started = True
         loop = asyncio.new_event_loop()
-        threading.Thread(target=loop.run_until_complete, args=(bot_main(),)).start()
+        threading.Thread(target=loop.run_until_complete, args=(main(),)).start()
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=PORT)
