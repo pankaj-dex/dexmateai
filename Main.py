@@ -1,78 +1,93 @@
 import os
+import json
+import time
+import uuid
 import logging
-import threading
-from flask import Flask
-from telegram.ext import (
-    ApplicationBuilder, ContextTypes,
-    MessageHandler, filters
-)
-import httpx
 import asyncio
+import threading
+import aiohttp
+import httpx
 
-# === KEYS ===
-BOT_TOKEN = "7866890680:AAfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
+from flask import Flask, request, jsonify
+from telegram import Bot, Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
+
+# ==== Fill Your API Keys ====
+BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
 OPENROUTER_API_KEY = "sk-or-v1-bd9437c745a4ece919192972ca1ba5795b336df4d836bd47e6c24b0dc991"
 
-# === LOGGING ===
+# ==== Set up logging ====
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# === FLASK APP ===
+# ==== Create Flask app ====
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return "✅ Dexmate AI is Live on Render!"
+# ==== Create Telegram bot application ====
+bot_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# === AI RESPONSE ===
-async def get_ai_response(message):
+# ==== Basic Hello Command ====
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("👋 Hello! I am Dexmate AI. How can I assist you today?")
+
+# ==== Handle Any Message ====
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+
+    # Friendly response to greetings
+    if text.lower() in ["hi", "hello", "hey"]:
+        await update.message.reply_text("How are you? Do you need any help? 😊")
+        return
+
+    # AI-powered code assistant
+    await update.message.reply_text("⏳ Generating response with AI...")
     try:
-        url = "https://openrouter.ai/api/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
-        data = {
+        body = {
             "model": "openai/gpt-3.5-turbo",
-            "messages": [{"role": "user", "content": message}]
+            "messages": [{"role": "user", "content": text}],
         }
         async with httpx.AsyncClient() as client:
-            res = await client.post(url, headers=headers, json=data, timeout=30)
-            res.raise_for_status()
-            reply = res.json()['choices'][0]['message']['content']
-            return reply
+            res = await client.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=body)
+            data = res.json()
+            response = data["choices"][0]["message"]["content"].strip()
+            await update.message.reply_text(response)
     except Exception as e:
-        logger.error(f"OpenRouter Error: {e}")
-        return "❌ Sorry, I couldn't respond."
+        logger.error(e)
+        await update.message.reply_text("⚠️ Sorry, I couldn't generate a response.")
 
-# === TELEGRAM HANDLERS ===
-async def handle_text(update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("⏳ Thinking...")
-    reply = await get_ai_response(update.message.text)
-    await update.message.reply_text(reply)
+# ==== Add Handlers ====
+bot_app.add_handler(CommandHandler("start", start))
+bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-async def handle_files(update, context):
-    await update.message.reply_text("📂 File received! I'll support file processing soon.")
+# ==== Bot Running Function ====
+async def run_bot():
+    await bot_app.initialize()
+    await bot_app.start()
+    await bot_app.updater.start_polling()
+    await bot_app.updater.idle()
 
-async def handle_voice(update, context):
-    await update.message.reply_text("🎤 Voice received! Voice-to-text coming soon.")
+# ==== Flask Route ====
+@app.route("/", methods=["GET"])
+def home():
+    return "🤖 Dexmate AI bot is live!"
 
-# === START TELEGRAM BOT ===
-def start_bot():
-    asyncio.set_event_loop(asyncio.new_event_loop())
-    app_telegram = ApplicationBuilder().token(BOT_TOKEN).build()
-    
-    app_telegram.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    app_telegram.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, handle_files))
-    app_telegram.add_handler(MessageHandler(filters.VOICE, handle_voice))
+# ==== Start Everything in Threads ====
+def start():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(run_bot())
 
-    # run polling without signal handlers
-    app_telegram.initialize()
-    app_telegram.start()
-    app_telegram.updater.start_polling()
-    app_telegram.updater.idle()
-
-# === MAIN START ===
-if __name__ == '__main__':
-    threading.Thread(target=start_bot).start()
-    app.run(host="0.0.0.0", port=10000)
+if __name__ == "__main__":
+    threading.Thread(target=start).start()
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
