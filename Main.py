@@ -78,9 +78,12 @@ async def start_bot():
     await bot_app.start()
     await bot_app.updater.start_polling()
 
-@app.before_first_request
-def activate_bot():
-    asyncio.get_event_loop().create_task(start_bot())
+@app.before_request
+def start_bot():
+    if not hasattr(app, 'bot_started'):
+        app.bot_started = True
+        loop = asyncio.new_event_loop()
+        threading.Thread(target=loop.run_until_complete, args=(bot_main(),)).start()
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=PORT)
