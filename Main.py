@@ -74,10 +74,13 @@ bot_app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
 bot_app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
 # ==== START BOT ====
-async def start_bot():
-    await bot_app.initialize()
-    await bot_app.start()
-    await bot_app.updater.start_polling()
+async def main():
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    # Add handlers here
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()
+    await app.updater.idle()
 
 @app.before_request
 def start_bot():
