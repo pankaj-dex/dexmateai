@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 #Load environment variables (API keys)
 
 BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA" 
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY= "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"
 
 #Flask app for webhook
 
