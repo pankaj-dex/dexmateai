@@ -86,5 +86,3 @@ if __name__ == '__main__':
     app.run(host="0.0.0.0", port=PORT)
 
 
-Successfully created text document 'Telegram Bot Main' which will be referenced in all future messages with the unique identifier textdoc_id: '6870c05528b88191b56bbb28e623dfdb'
-
