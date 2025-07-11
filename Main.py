@@ -1,6 +1,12 @@
 #Main.py
 
-import os import logging import asyncio from flask import Flask, request from telegram import Update, Bot, constants from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters import openai import httpx import base64
+import os
+import logging
+import asyncio from flask 
+import Flask, request 
+from telegram import Update, Bot, constants from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters import openai 
+import httpx 
+import base64
 
 #Set up logging
 
