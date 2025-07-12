@@ -57,6 +57,8 @@ async def handle_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🎤 Voice received! Voice-to-text coming soon.")
 
+app_telegram.add_error_handler(error_handler)
+
 # === START BOT ===
 def main():
     app_telegram = ApplicationBuilder().token(BOT_TOKEN).build()
