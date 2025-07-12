@@ -1,19 +1,17 @@
-import logging, os, aiofiles, asyncio, threading
+import os, asyncio, logging, threading, httpx
 from flask import Flask
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder, ContextTypes, MessageHandler, filters
-)
-import httpx
+from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 
-# ======== CONFIGURATION =========
+# === CONFIG ===
 BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
 OPENROUTER_API_KEY = "your_openrouter_api_key_here"
 MODEL = "openai/gpt-3.5-turbo"
-app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
 
-# ======== AI RESPONSE FUNCTION =========
+logging.basicConfig(level=logging.INFO)
+app = Flask(__name__)
+
+# === AI RESPONSE ===
 async def get_ai_response(message: str) -> str:
     try:
         async with httpx.AsyncClient() as client:
@@ -28,38 +26,46 @@ async def get_ai_response(message: str) -> str:
                     "messages": [{"role": "user", "content": message}]
                 }
             )
-            data = res.json()
-            return data["choices"][0]["message"]["content"]
+            return res.json()["choices"][0]["message"]["content"]
     except Exception as e:
         logging.error(f"AI Error: {e}")
-        return "⚠️ Sorry, I couldn't fetch a response."
+        return "⚠️ AI error. Please try again."
 
-# ======== HANDLERS =========
+# === HANDLERS ===
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    reply = await get_ai_response(update.message.text)
+    user_input = update.message.text
+    reply = await get_ai_response(user_input)
     await update.message.reply_text(reply)
 
 async def handle_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📂 File received! I'll support file processing soon.")
+    await update.message.reply_text("📁 File received! (Feature coming soon)")
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🎤 Voice received! Voice-to-text coming soon.")
+    await update.message.reply_text("🎤 Voice message received! (Voice-to-text coming soon)")
 
-# ======== TELEGRAM BOT =========
+# === BOT STARTUP ===
+async def run_bot():
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    application.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, handle_files))
+    application.add_handler(MessageHandler(filters.VOICE, handle_voice))
+
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling()
+    await application.updater.wait_until_closed()
+    await application.stop()
+    await application.shutdown()
+
 def start_bot():
-    asyncio.set_event_loop(asyncio.new_event_loop())
-    app_telegram = ApplicationBuilder().token(BOT_TOKEN).build()
-    app_telegram.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    app_telegram.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, handle_files))
-    app_telegram.add_handler(MessageHandler(filters.VOICE, handle_voice))
-    app_telegram.run_polling()
+    asyncio.run(run_bot())
 
-# ======== FLASK + THREAD =========
+# === FLASK APP ===
 @app.route("/", methods=["GET", "HEAD"])
 def index():
-    threading.Thread(target=start_bot).start()
-    return "✅ Dexmate AI bot is running!"
+    return "✅ Dexmate AI is live!"
 
-# ======== MAIN =========
+# === MAIN ===
 if __name__ == "__main__":
+    threading.Thread(target=start_bot).start()
     app.run(host="0.0.0.0", port=10000)
