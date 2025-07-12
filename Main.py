@@ -26,46 +26,34 @@ async def get_ai_response(message: str) -> str:
                     "messages": [{"role": "user", "content": message}]
                 }
             )
-            return res.json()["choices"][0]["message"]["content"]
+            return res.json()["choices"][0]["message"]["content"].strip()
     except Exception as e:
-        logging.error(f"AI Error: {e}")
-        return "⚠️ AI error. Please try again."
+        logging.error(f"AI response error: {e}")
+        return "⚠️ Sorry, an error occurred while processing your message."
 
 # === HANDLERS ===
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_input = update.message.text
-    reply = await get_ai_response(user_input)
+    user_message = update.message.text
+    reply = await get_ai_response(user_message)
     await update.message.reply_text(reply)
 
 async def handle_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📁 File received! (Feature coming soon)")
+    await update.message.reply_text("📂 File received! File processing support coming soon.")
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🎤 Voice message received! (Voice-to-text coming soon)")
+    await update.message.reply_text("🎤 Voice received! Voice-to-text support coming soon.")
 
-# === BOT STARTUP ===
-async def run_bot():
-    application = ApplicationBuilder().token(BOT_TOKEN).build()
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    application.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, handle_files))
-    application.add_handler(MessageHandler(filters.VOICE, handle_voice))
-
-    await application.initialize()
-    await application.start()
-    await application.updater.start_polling()
-    await application.updater.wait_until_closed()
-    await application.stop()
-    await application.shutdown()
-
+# === START TELEGRAM BOT ===
 def start_bot():
-    asyncio.run(run_bot())
+    asyncio.set_event_loop(asyncio.new_event_loop())
+    app_telegram = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# === FLASK APP ===
-@app.route("/", methods=["GET", "HEAD"])
-def index():
-    return "✅ Dexmate AI is live!"
+    app_telegram.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    app_telegram.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, handle_files))
+    app_telegram.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
-# === MAIN ===
-if __name__ == "__main__":
+    app_telegram.run_polling()
+
+# === START ===
+if __name__ == '__main__':
     threading.Thread(target=start_bot).start()
-    app.run(host="0.0.0.0", port=10000)
