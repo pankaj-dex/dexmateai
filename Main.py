@@ -7,7 +7,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filte
 
 # === CONFIG ===
 BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
-OPENROUTER_API_KEY = "your_openrouter_api_key_here"
+OPENROUTER_API_KEY = "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"
 MODEL = "openai/gpt-3.5-turbo"
 
 # === LOGGING ===
