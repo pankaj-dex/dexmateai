@@ -1,9 +1,20 @@
 import os
 import logging
+from telegram.error import TelegramError
 import httpx
 from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
+
+
+
+async def error_handler(update, context):
+    logging.error("Exception while handling an update:", exc_info=context.error)
+    try:
+        if update.message:
+            await update.message.reply_text("⚠️ An internal error occurred. Please try again later.")
+    except Exception as e:
+        logging.error(f"Failed to send error message: {e}")
 
 # === CONFIG ===
 BOT_TOKEN = "7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA"
