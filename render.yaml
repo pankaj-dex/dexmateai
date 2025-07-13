@@ -6,9 +6,10 @@ services:
     startCommand: python main.py
     envVars:
       - key: BOT_TOKEN
-        value: your_bot_token_here
+        value: 7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA
+
       - key: OPENROUTER_API_KEY
-        value: your_openrouter_key_here
+        value: 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
       - key: ENVIRONMENT
         value: production
       - key: WEBHOOK_URL
