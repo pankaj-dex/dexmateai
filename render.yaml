@@ -2,12 +2,14 @@ services:
   - type: web
     name: dexmateai
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python Main.py
+    buildCommand: pip install -r requirements.txt && apt-get update && apt-get install -y tesseract-ocr
+    startCommand: python main.py
     envVars:
       - key: BOT_TOKEN
-        value: your_bot_token
-      - key: OPENAI_API_KEY
-        value: your_openai_key
+        value: your_bot_token_here
+      - key: OPENROUTER_API_KEY
+        value: your_openrouter_key_here
+      - key: ENVIRONMENT
+        value: production
       - key: WEBHOOK_URL
         value: https://dexmateai.onrender.com
