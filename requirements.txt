@@ -10,5 +10,7 @@ pydantic-core==2.33.2
 typing-extensions==4.14.1
 typing-inspection==0.4.1
 Pillow==10.3.0
-easyocr==1.7.1
-opencv-python-headless==4.9.0.80
+# Older version of easyocr to avoid source build issues
+easyocr==1.6.2
+# Headless OpenCV build known to work with easyocr
+opencv-python-headless==4.5.5.64
