@@ -2,12 +2,15 @@ services:
   - type: web
     name: dexmateai
     env: python
-    buildCommand: pip install -r requirements.txt && apt-get update && apt-get install -y tesseract-ocr
+    buildCommand: |
+      apt-get update &&
+      apt-get install -y python3-dev python3-pip &&
+      pip install --upgrade pip wheel setuptools &&
+      pip install -r requirements.txt
     startCommand: python main.py
     envVars:
       - key: BOT_TOKEN
         value: 7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA
-
       - key: OPENROUTER_API_KEY
         value: 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
       - key: ENVIRONMENT
