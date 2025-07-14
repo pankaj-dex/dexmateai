@@ -12,8 +12,7 @@ from telegram.ext import (
 )
 
 # Configuration (unchanged)
-BOT_TOKEN = os.getenv('7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA
-')
+BOT_TOKEN = os.getenv("7866890680:AAFfFtyIv4W_8_9FohReYvRP7wt9IbIJDMA")
 OPENROUTER_API_KEY = os.getenv('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')
 MODEL = "openai/gpt-3.5-turbo"
 
