@@ -24,87 +24,50 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 async def get_ai_response(prompt: str) -> str:
-    """Get response from AI with enhanced error handling."""
     try:
-        headers = {
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "model": MODEL,
-            "messages": [{"role": "user", "content": prompt}]
-        }
-        
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                json=payload,
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": MODEL,
+                    "messages": [{"role": "user", "content": prompt}]
+                },
                 timeout=30.0
             )
             response.raise_for_status()
-            data = response.json()
-            return data['choices'][0]['message']['content']
+            return response.json()['choices'][0]['message']['content']
     except Exception as e:
         logger.error(f"AI error: {e}")
-        return "❌ Failed to get AI response. Please try again."
+        return "❌ Failed to process your request. Please try again."
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Send welcome message."""
-    welcome_msg = """🤖 *Welcome to CodeMate AI Bot!* 🤖
-
-I can help you with:
-- Writing code
-- Debugging errors
-- Optimizing code
-- Explaining concepts
-
-*Commands:*
-/start - Show this message
-/code [language] [description] - Generate code
-
-*Examples:*
-`/code Python quick sort`"""
-    
-    await update.message.reply_text(welcome_msg, parse_mode="Markdown")
-
-async def handle_code_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /code command for generating code."""
-    if not context.args:
-        await update.message.reply_text("Usage: /code [language] [description]\nExample: /code Python quick sort")
-        return
-    
-    language = context.args[0]
-    description = ' '.join(context.args[1:])
-    prompt = f"Write {language} code for: {description}\n\nProvide:\n1. Complete implementation\n2. Brief explanation\n3. Usage example"
-    
-    await update.message.reply_text(f"💻 Generating {language} code for: {description}...")
-    reply = await get_ai_response(prompt)
-    await update.message.reply_text(reply)
+    await update.message.reply_text(
+        "🤖 *CodeMate AI Bot*\n\n"
+        "I can help with:\n"
+        "- Writing code\n- Debugging\n- Code reviews\n\n"
+        "Just send me your code questions!",
+        parse_mode="Markdown"
+    )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle regular text messages."""
     reply = await get_ai_response(update.message.text)
     await update.message.reply_text(reply)
 
 async def run_bot():
-    """Run the bot with proper webhook or polling setup."""
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-    
-    # Register handlers
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("code", handle_code_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    # Production (Render) vs Development setup
     if os.getenv('ENVIRONMENT') == 'production':
-        WEBHOOK_URL = os.getenv('WEBHOOK_URL')
-        await app.bot.set_webhook(url=f"{WEBHOOK_URL}/{BOT_TOKEN}")
-        logger.info("Bot started with webhook")
+        await app.bot.set_webhook(f"{os.getenv('WEBHOOK_URL')}/{BOT_TOKEN}")
+        logger.info("Webhook configured")
     else:
         await app.run_polling()
-        logger.info("Bot started with polling")
+        logger.info("Polling started")
 
 if __name__ == '__main__':
     asyncio.run(run_bot())
